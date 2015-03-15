@@ -3,3 +3,9 @@
 name = "rust-icmptime"
 version = "0.0.1"
 authors = ["Luke Rodgers <lukeasrodgers@gmail.com>"]
+
+[dependencies]
+getopts = "0.2.4"
+
+[dependencies.pnet]
+git = "https://github.com/libpnet/libpnet.git"
