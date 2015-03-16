@@ -22,7 +22,7 @@ fn main() {
     let addr: IpAddr = FromStr::from_str(addr_arg.as_slice()).unwrap();
 
     let protocol = Layer3(IpNextHeaderProtocols::Test1);
-    let (mut tx, mut rx) = match transport_channel(4096, protocol) {
+    let (mut icmp_sender, mut icmp_receiver) = match transport_channel(4096, protocol) {
         Ok((tx, rx)) => (tx, rx),
         Err(e) => panic!("An error occurred when creating the transport channel:
                         {}", e)
