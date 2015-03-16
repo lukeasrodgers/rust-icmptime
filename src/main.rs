@@ -10,6 +10,8 @@ use pnet::transport::TransportProtocol::{Ipv4};
 use pnet::old_packet::ip::IpNextHeaderProtocols;
 use pnet::transport::TransportChannelType::{Layer3};
 use pnet::transport::{transport_channel};
+use pnet::old_packet::ipv4::{Ipv4Header, Ipv4Packet};
+
 
 fn main() {
     let args: Vec<String> = os::args();
@@ -27,4 +29,55 @@ fn main() {
         Err(e) => panic!("An error occurred when creating the transport channel:
                         {}", e)
     };
+    let packet = build_icmp_time_request_packet();
+}
+
+fn build_icmp_time_request_packet() -> IcmpRequestPacket {
+    let ip_type = 14u8;
+    let ip_code = 0u8;
+    let ip_checksum = 0u16; // calculate; 16 bits
+    let identifier = 0u16; // what should this be? used to match requests to replies; 16 bits
+    let sequence = 0u16; // what should this be? used to match requests to replies;
+    let originate_timestamp = 0u32; // get from systime
+    let receive_timestamp = 0u32; // not used
+    let transmit_timestamp = 0u32; // not used
+    let mut packet = IcmpRequestPacket::new();
+    packet
+}
+
+struct IcmpRequestPacket {
+    ip_type: u8,
+    ip_code: u8,
+    ip_checksum: u16,
+    identifier: u16,
+    sequence: u16,
+    originate_timestamp: u32,
+    receive_timestamp: u32,
+    transmit_timestamp: u32
+}
+
+impl IcmpRequestPacket {
+    fn new() -> IcmpRequestPacket {
+        let mut packet = IcmpRequestPacket {
+            ip_type: 14,
+            ip_code: 0,
+            ip_checksum: 0,
+            identifier: 0,
+            sequence: 0,
+            originate_timestamp: 0,
+            receive_timestamp: 0,
+            transmit_timestamp: 0
+        };
+        packet.set_checksum();
+        packet
+    }
+
+    fn calculate_checksum(&self) -> u16 {
+        // implement me
+        1
+    }
+
+    fn set_checksum(&mut self) {
+        self.ip_checksum = self.calculate_checksum();
+    }
 }
