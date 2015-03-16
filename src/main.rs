@@ -3,7 +3,7 @@ extern crate pnet;
 
 use getopts::Options;
 use std::os;
-use std::net::{SocketAddr};
+use std::net::{IpAddr};
 use std::str::FromStr;
 
 use pnet::transport::TransportProtocol::{Ipv4};
@@ -19,7 +19,7 @@ fn main() {
         Err(f) => panic!(f.to_string())
     };
     let addr_arg = matches.free[0].as_slice();
-    let addr:SocketAddr = FromStr::from_str(addr_arg.as_slice()).unwrap();
+    let addr: IpAddr = FromStr::from_str(addr_arg.as_slice()).unwrap();
 
     let protocol = Layer3(IpNextHeaderProtocols::Test1);
     let (mut tx, mut rx) = match transport_channel(4096, protocol) {
