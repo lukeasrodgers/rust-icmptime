@@ -9,3 +9,6 @@ getopts = "0.2.4"
 
 [dependencies.pnet]
 git = "https://github.com/libpnet/libpnet.git"
+
+[dependencies.time]
+time = "0.1.20"
