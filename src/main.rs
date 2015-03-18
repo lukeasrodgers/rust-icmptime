@@ -1,5 +1,6 @@
 extern crate getopts;
 extern crate pnet;
+extern crate time;
 
 use getopts::Options;
 use std::os;
@@ -68,16 +69,28 @@ impl IcmpRequestPacket {
             receive_timestamp: 0,
             transmit_timestamp: 0
         };
+        packet.set_originate_timestamp();
         packet.set_checksum();
         packet
     }
 
     fn calculate_checksum(&self) -> u16 {
         // implement me
+        let mut vec: Vec<u16> = vec![];
         1
     }
 
     fn set_checksum(&mut self) {
         self.ip_checksum = self.calculate_checksum();
     }
+
+    fn set_originate_timestamp(&mut self) {
+        self.originate_timestamp = time_after_utc();
+    }
+}
+
+fn time_after_utc() -> u32 {
+    let t = time::now_utc();
+    let s: i32 = t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec;
+    s as u32
 }
