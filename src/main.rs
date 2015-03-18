@@ -59,7 +59,7 @@ struct IcmpRequestPacket {
 impl IcmpRequestPacket {
     fn new() -> IcmpRequestPacket {
         let mut packet = IcmpRequestPacket {
-            ip_type: 14,
+            ip_type: 13,
             ip_code: 0,
             ip_checksum: 0,
             identifier: 0,
