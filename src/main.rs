@@ -34,14 +34,6 @@ fn main() {
 }
 
 fn build_icmp_time_request_packet() -> IcmpRequestPacket {
-    let ip_type = 14u8;
-    let ip_code = 0u8;
-    let ip_checksum = 0u16; // calculate; 16 bits
-    let identifier = 0u16; // what should this be? used to match requests to replies; 16 bits
-    let sequence = 0u16; // what should this be? used to match requests to replies;
-    let originate_timestamp = 0u32; // get from systime
-    let receive_timestamp = 0u32; // not used
-    let transmit_timestamp = 0u32; // not used
     let mut packet = IcmpRequestPacket::new();
     packet
 }
@@ -77,7 +69,19 @@ impl IcmpRequestPacket {
     fn calculate_checksum(&self) -> u16 {
         // implement me
         let mut vec: Vec<u16> = vec![];
-        1
+        vec.push((self.ip_type + self.ip_code) as u16);
+        vec.push(self.ip_checksum);
+        vec.push(self.identifier);
+        vec.push(self.sequence);
+        vec.push((self.originate_timestamp >> 16) as u16);
+        vec.push(self.originate_timestamp as u16);
+        vec.push((self.receive_timestamp >> 16) as u16);
+        vec.push(self.receive_timestamp as u16);
+        vec.push((self.transmit_timestamp >> 16) as u16);
+        vec.push(self.transmit_timestamp as u16);
+        let sum = vec.iter().fold(0u16, |sum, x| sum + *x);
+        let ones_complement = 65535 - sum;
+        ones_complement
     }
 
     fn set_checksum(&mut self) {
