@@ -44,6 +44,23 @@ fn build_icmp_time_request_packet<'p>(packet_slice: &'p [u8]) -> IcmpRequestPack
     packet
 }
 
+pub trait IcmpPacket : Ipv4Packet {
+    fn calculate_icmp_checksum(&self) -> u16 {
+        let start_offset = self.get_header_length() as usize * 4;
+        let chunked: Vec<u16> = self.packet().slice_from(start_offset).
+            chunks(2).
+            map(|x| x.iter().fold(0u16, |sum, y|
+                                  if sum == 0 {
+                                      sum + (*y as u16) << 4
+                                  }
+                                  else {
+                                      sum + *y as u16
+                                  }
+                                 )).collect();
+        ones_complement_sum(chunked.as_slice())
+    }
+}
+
 struct IcmpRequestPacket<'p> {
     ip_type: u8,
     ip_code: u8,
