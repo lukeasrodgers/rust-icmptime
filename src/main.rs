@@ -21,6 +21,10 @@ fn main() {
         Ok(m) => m,
         Err(f) => panic!(f.to_string())
     };
+    match matches.free.len() {
+        0 => panic!("must provide ip address"),
+        _ => {}
+    }
     let addr_arg = matches.free[0].as_slice();
     let addr: IpAddr = FromStr::from_str(addr_arg.as_slice()).unwrap();
 
