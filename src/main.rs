@@ -11,6 +11,7 @@ use pnet::transport::TransportProtocol::{Ipv4};
 use pnet::old_packet::ip::IpNextHeaderProtocols;
 use pnet::transport::TransportChannelType::{Layer3};
 use pnet::transport::{transport_channel};
+use pnet::old_packet::{Packet};
 use pnet::old_packet::ipv4::{Ipv4Header, Ipv4Packet};
 
 
@@ -34,15 +35,16 @@ fn main() {
         Err(e) => panic!("An error occurred when creating the transport channel:
                         {}", e)
     };
-    let packet = build_icmp_time_request_packet();
+    let packet_vec: Vec<u8> = vec![];
+    let packet = build_icmp_time_request_packet(packet_vec.as_slice());
 }
 
-fn build_icmp_time_request_packet() -> IcmpRequestPacket {
-    let mut packet = IcmpRequestPacket::new();
+fn build_icmp_time_request_packet<'p>(packet_slice: &'p [u8]) -> IcmpRequestPacket<'p> {
+    let mut packet = IcmpRequestPacket::new(packet_slice);
     packet
 }
 
-struct IcmpRequestPacket {
+struct IcmpRequestPacket<'p> {
     ip_type: u8,
     ip_code: u8,
     ip_checksum: u16,
@@ -50,11 +52,25 @@ struct IcmpRequestPacket {
     sequence: u16,
     originate_timestamp: u32,
     receive_timestamp: u32,
-    transmit_timestamp: u32
+    transmit_timestamp: u32,
+    packet: &'p [u8]
 }
 
-impl IcmpRequestPacket {
-    fn new() -> IcmpRequestPacket {
+// pretty much copy-pasted from pnet, not sure if inline directives are necessary
+impl<'a> Packet for IcmpRequestPacket<'a> {
+    #[inline(always)]
+    fn packet<'p>(&'p self) -> &'p [u8] { self.packet }
+
+    #[inline(always)]
+    fn payload<'p>(&'p self) -> &'p [u8] { &self.packet[20..] }
+    // use of 20 here should be fine for our case, IHL is 5, no IP options in header
+}
+
+
+impl<'p> Ipv4Packet for IcmpRequestPacket<'p> {}
+
+impl<'p> IcmpRequestPacket<'p> {
+    fn new(packet_slice: &'p [u8]) -> IcmpRequestPacket {
         let mut packet = IcmpRequestPacket {
             ip_type: 13,
             ip_code: 0,
@@ -63,7 +79,8 @@ impl IcmpRequestPacket {
             sequence: 0,
             originate_timestamp: 0,
             receive_timestamp: 0,
-            transmit_timestamp: 0
+            transmit_timestamp: 0,
+            packet: packet_slice
         };
         packet.set_originate_timestamp();
         // note we actually want to do this just before sending, not yet
@@ -110,6 +127,7 @@ fn ones_complement_sum(sl: &[u16]) -> u16 {
 mod tests {
     use super::ones_complement_sum;
 
+    // examples for ones complement sum taken from web
     #[test]
     fn test_ones_complement_sum() {
         let mut vec: Vec<u16> = vec![];
