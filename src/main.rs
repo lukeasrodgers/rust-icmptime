@@ -4,7 +4,7 @@ extern crate "rust-icmptime" as icmptime;
 
 use getopts::Options;
 use std::os;
-use std::net::{IpAddr};
+use std::old_io::net::ip::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 
 use pnet::transport::TransportProtocol::{Ipv4};
@@ -14,7 +14,9 @@ use pnet::transport::{transport_channel};
 use pnet::old_packet::{Packet};
 use pnet::old_packet::ipv4::{Ipv4Header, Ipv4Packet};
 
-use icmptime::{build_icmp_time_request_packet};
+use icmptime::packet::{MutIcmpRequestPacket};
+
+use std::iter::repeat;
 
 fn main() {
     let args: Vec<String> = os::args();
@@ -36,6 +38,15 @@ fn main() {
         Err(e) => panic!("An error occurred when creating the transport channel:
                         {}", e)
     };
-    let packet_vec: Vec<u8> = vec![];
-    let packet = build_icmp_time_request_packet(packet_vec.as_slice());
+    // let packet_vec: Vec<u8> = vec![];
+    // let packet = build_icmp_time_request_packet(packet_vec.as_slice());
+    let size = MutIcmpRequestPacket::allocation_size();
+    let mut vec: Vec<u8> = repeat(0u8).take(size).collect();
+    let mut packet = MutIcmpRequestPacket::new(vec.as_mut_slice());
+    packet.prepare_for_sending(&addr);
+
+    match icmp_sender.send_to(packet, addr) {
+        Ok(n) => println!("sent"),
+        Err(e) => panic!("failed to send packet: {}", e)
+    }
 }

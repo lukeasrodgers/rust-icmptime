@@ -1,7 +1,9 @@
 extern crate pnet;
 
+use std::old_io::net::ip::{IpAddr, Ipv4Addr};
 use pnet::old_packet::{Packet};
 use pnet::old_packet::ipv4::{Ipv4Header, Ipv4Packet};
+use pnet::old_packet::ip::{IpNextHeaderProtocol,IpNextHeaderProtocols};
 
 use util;
 
@@ -134,11 +136,55 @@ impl<'p> MutIcmpRequestPacket<'p> {
         }
     }
 
-    fn set_checksum(&mut self) {
+    pub fn allocation_size() -> usize {
+        // 20 for IP header, 8 for ICMP header, 12 for ICMP data
+        20 + 8 + 12
+    }
+
+    pub fn prepare_for_sending(&mut self, addr: &IpAddr) {
+        self.set_version(4);
+        self.set_header_length(5);
+        self.set_dscp(0);
+        self.set_total_length(40);
+        self.set_identification(257);
+        self.set_flags(2);
+        // no need to set fragment offset, I believe
+        self.set_fragment_offset(0);
+        self.set_ttl(64);
+        self.set_next_level_protocol(IpNextHeaderProtocols::Icmp);
+        self.checksum();
+        self.set_destination(*addr);
+        self.set_source(Ipv4Addr(127, 0, 0, 1));
+
+        self.set_icmp_type();
+        self.set_icmp_code();
+        self.set_icmp_identifier();
+        self.set_icmp_sequence();
+        self.set_originate_timestamp();
+        self.set_icmp_checksum();
+    }
+
+    fn set_icmp_checksum(&mut self) {
         let start = self.start_of_icmp();
         let checksum = self.calculate_icmp_checksum();
         self.packet[start + 2] = (checksum >> 8) as u8;
         self.packet[start + 3] = (checksum & 0xf) as u8;
+    }
+
+    fn set_icmp_type(&mut self) {
+        let start = self.start_of_icmp();
+        self.packet[start] = 13;
+    }
+
+    fn set_icmp_code(&mut self) {
+        let start = self.start_of_icmp();
+        self.packet[start + 1] = 0;
+    }
+
+    fn set_icmp_identifier(&mut self) {
+    }
+
+    fn set_icmp_sequence(&mut self) {
     }
 
     fn set_originate_timestamp(&mut self) {
@@ -150,4 +196,107 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.packet[start + 10] = ((time >> 8) & 0xff0) as u8;
         self.packet[start + 11] = time as u8;
     }
+
+    pub fn set_version(&mut self, version: u8) {
+        let ver = version << 4;
+        self.packet[0] = (self.packet[0] & 0x0F) | ver;
+    }
+
+
+    /// Set the header length field for the packet
+    pub fn set_header_length(&mut self, ihl: u8) {
+        let len = ihl & 0xF;
+        self.packet[0] = (self.packet[0] & 0xF0) | len;
+    }
+
+
+
+    /// Set the DSCP field for the packet
+    pub fn set_dscp(&mut self, dscp: u8) {
+        let cp = dscp & 0xFC;
+        self.packet[1] = (self.packet[1] & 3) | (cp << 2);
+    }
+
+    /// Set the ECN field for the packet
+    pub fn set_ecn(&mut self, ecn: u8) {
+        let cn = ecn & 3;
+        self.packet[1] = (self.packet[1] & 0xFC) | cn;
+    }
+
+    /// Set the total length field for the packet
+    pub fn set_total_length(&mut self, len: u16) {
+        self.packet[2] = (len >> 8) as u8;
+        self.packet[3] = (len & 0xFF) as u8;
+    }
+
+    /// Set the identification field for the packet
+    pub fn set_identification(&mut self, identification: u16) {
+        self.packet[4] = (identification >> 8) as u8;
+        self.packet[5] = (identification & 0x00FF) as u8;
+    }
+
+    /// Set the flags field for the packet
+    pub fn set_flags(&mut self, flags: u8) {
+        let fs = (flags & 7) << 5;
+        self.packet[6] = (self.packet[6] & 0x1F) | fs;
+    }
+
+    /// Set the fragment offset field for the packet
+    pub fn set_fragment_offset(&mut self, offset: u16) {
+        let fo = offset & 0x1FFF;
+        self.packet[6] = (self.packet[6] & 0xE0) | ((fo & 0xFF00) >> 8) as u8;
+        self.packet[7] = (fo & 0xFF) as u8;
+    }
+
+    /// Set the TTL field for the packet
+    pub fn set_ttl(&mut self, ttl: u8) {
+        self.packet[8] = ttl;
+    }
+
+    /// Set the next level protocol field for the packet
+    pub fn set_next_level_protocol(&mut self, IpNextHeaderProtocol(protocol): IpNextHeaderProtocol) {
+        self.packet[9] = protocol;
+    }
+
+    /// Set the checksum field for the packet
+    pub fn set_checksum(&mut self, checksum: u16) {
+        let cs1 = ((checksum & 0xFF00) >> 8) as u8;
+        let cs2 = (checksum & 0x00FF) as u8;
+        self.packet[10] = cs1;
+        self.packet[11] = cs2;
+    }
+
+    /// Set the source address for the packet
+    pub fn set_source(&mut self, ip: IpAddr) {
+        match ip {
+            Ipv4Addr(a, b, c, d) => {
+                self.packet[12] = a;
+                self.packet[13] = b;
+                self.packet[14] = c;
+                self.packet[15] = d;
+            },
+            _ => ()
+        }
+    }
+
+    /// Set the destination field for the packet
+    pub fn set_destination(&mut self, ip: IpAddr) {
+        match ip {
+            Ipv4Addr(a, b, c, d) => {
+                self.packet[16] = a;
+                self.packet[17] = b;
+                self.packet[18] = c;
+                self.packet[19] = d;
+            },
+            _ => ()
+        }
+    }
+
+    /// Calculate the checksum of the packet and then set the field to the value
+    /// calculated
+    pub fn checksum(&mut self) {
+        let checksum = self.calculate_checksum();
+        self.set_checksum(checksum);
+    }
+
 }
