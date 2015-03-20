@@ -66,6 +66,7 @@ impl IcmpRequestPacket {
             transmit_timestamp: 0
         };
         packet.set_originate_timestamp();
+        // note we actually want to do this just before sending, not yet
         packet.set_checksum();
         packet
     }
