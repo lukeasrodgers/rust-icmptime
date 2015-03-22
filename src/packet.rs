@@ -147,14 +147,15 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.set_dscp(0);
         self.set_total_length(40);
         self.set_identification(257);
-        self.set_flags(2);
-        // no need to set fragment offset, I believe
+        // setting flags seems to result in malformed ICMP packets with a
+        // fragment offset.
+        self.set_flags(0);
         self.set_fragment_offset(0);
         self.set_ttl(64);
         self.set_next_level_protocol(IpNextHeaderProtocols::Icmp);
-        self.checksum();
         self.set_destination(*addr);
         self.set_source(Ipv4Addr(127, 0, 0, 1));
+        self.checksum();
 
         self.set_icmp_type();
         self.set_icmp_code();
