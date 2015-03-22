@@ -158,8 +158,8 @@ impl<'p> MutIcmpRequestPacket<'p> {
 
         self.set_icmp_type();
         self.set_icmp_code();
-        self.set_icmp_identifier();
-        self.set_icmp_sequence();
+        self.set_icmp_identifier(0x9b69);
+        self.set_icmp_sequence(1);
         self.set_originate_timestamp();
         self.set_icmp_checksum();
     }
@@ -181,10 +181,16 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.packet[start + 1] = 0;
     }
 
-    fn set_icmp_identifier(&mut self) {
+    fn set_icmp_identifier(&mut self, id: u16) {
+        let start = self.start_of_icmp();
+        self.packet[start + 4] = (id >> 8) as u8;
+        self.packet[start + 5] = id as u8;
     }
 
-    fn set_icmp_sequence(&mut self) {
+    fn set_icmp_sequence(&mut self, sequence: u16) {
+        let start = self.start_of_icmp();
+        self.packet[start + 6] = (sequence >> 8) as u8;
+        self.packet[start + 7] = sequence as u8;
     }
 
     fn set_originate_timestamp(&mut self) {
