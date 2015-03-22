@@ -1,8 +1,8 @@
 extern crate time;
 
-pub fn seconds_after_utc() -> u32 {
+pub fn msecs_after_utc() -> u32 {
     let t = time::now_utc();
-    let s: i32 = t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec;
+    let s: i32 = (t.tm_hour * 3600 + t.tm_min * 60 + t.tm_sec) * 1000;
     s as u32
 }
 

@@ -189,7 +189,7 @@ impl<'p> MutIcmpRequestPacket<'p> {
 
     fn set_originate_timestamp(&mut self) {
         let start = self.start_of_icmp();
-        let time = util::seconds_after_utc();
+        let time = util::msecs_after_utc();
         // dbl check this offset
         self.packet[start + 8] = (time >> 24) as u8;
         self.packet[start + 9] = ((time >> 16) & 0xf0) as u8;
