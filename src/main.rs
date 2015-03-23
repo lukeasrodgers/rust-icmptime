@@ -38,8 +38,6 @@ fn main() {
         Err(e) => panic!("An error occurred when creating the transport channel:
                         {}", e)
     };
-    // let packet_vec: Vec<u8> = vec![];
-    // let packet = build_icmp_time_request_packet(packet_vec.as_slice());
     let size = MutIcmpRequestPacket::allocation_size();
     let mut vec: Vec<u8> = repeat(0u8).take(size).collect();
     let mut packet = MutIcmpRequestPacket::new(vec.as_mut_slice());
