@@ -3,7 +3,6 @@ extern crate pnet;
 
 use getopts::Options;
 use std::os;
-use std::net::{IpAddr};
 use std::str::FromStr;
 
 use pnet::transport::TransportProtocol::{Ipv4};
