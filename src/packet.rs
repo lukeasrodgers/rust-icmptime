@@ -141,7 +141,7 @@ impl<'p> MutIcmpRequestPacket<'p> {
         20 + 8 + 12
     }
 
-    pub fn prepare_for_sending(&mut self, addr: &IpAddr) {
+    pub fn prepare_for_sending(&mut self, dest_addr: &IpAddr, src_addr: &IpAddr) {
         self.set_version(4);
         self.set_header_length(5);
         self.set_dscp(0);
@@ -153,8 +153,8 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.set_fragment_offset(0);
         self.set_ttl(64);
         self.set_next_level_protocol(IpNextHeaderProtocols::Icmp);
-        self.set_destination(*addr);
-        self.set_source(Ipv4Addr(127, 0, 0, 1));
+        self.set_destination(*dest_addr);
+        self.set_source(*src_addr);
         self.checksum();
 
         self.set_icmp_type();
