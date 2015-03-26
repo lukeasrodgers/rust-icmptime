@@ -10,18 +10,8 @@ use util;
 pub trait IcmpPacket : Ipv4Packet {
     fn calculate_icmp_checksum(&self) -> u16 {
         // start at end of IP header packet
-        let start_offset = self.get_header_length() as usize * 4;
-        let chunked: Vec<u16> = self.packet().slice_from(start_offset).
-            chunks(2).
-            map(|x| x.iter().fold(0u16, |sum, y|
-                                  if sum == 0 {
-                                      sum + (*y as u16) << 4
-                                  }
-                                  else {
-                                      sum + *y as u16
-                                  }
-                                 )).collect();
-        util::ones_complement_sum(chunked.as_slice())
+        let start_offset = self.start_of_icmp();
+        util::ones_complement_sum(self.packet().slice_from(start_offset))
     }
 
     fn start_of_icmp(&self) -> usize {
@@ -161,15 +151,24 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.set_icmp_code();
         self.set_icmp_identifier(0x9b69);
         self.set_icmp_sequence(1);
-        self.set_originate_timestamp();
+        let time = util::msecs_after_utc();
+        self.set_originate_timestamp(time);
         self.set_icmp_checksum();
+        let start_offset = self.start_of_icmp();
     }
 
     fn set_icmp_checksum(&mut self) {
         let start = self.start_of_icmp();
         let checksum = self.calculate_icmp_checksum();
         self.packet[start + 2] = (checksum >> 8) as u8;
-        self.packet[start + 3] = (checksum & 0xf) as u8;
+        self.packet[start + 3] = checksum as u8;
+    }
+
+    fn get_icmp_checksum(&self) -> u16 {
+        let start = self.start_of_icmp();
+        let a = self.packet[start + 2];
+        let b = self.packet[start + 3];
+        ((a as u16) << 8 | (b as u16)) as u16
     }
 
     fn set_icmp_type(&mut self) {
@@ -194,9 +193,8 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.packet[start + 7] = sequence as u8;
     }
 
-    fn set_originate_timestamp(&mut self) {
+    fn set_originate_timestamp(&mut self, time: u32) {
         let start = self.start_of_icmp();
-        let time = util::msecs_after_utc();
         // dbl check this offset
         self.packet[start + 8] = (time >> 24) as u8;
         self.packet[start + 9] = ((time >> 16) & 0xf0) as u8;
@@ -306,4 +304,95 @@ impl<'p> MutIcmpRequestPacket<'p> {
         self.set_checksum(checksum);
     }
 
+}
+
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+    use std::iter::repeat;
+    use std::old_io::net::ip::{IpAddr, Ipv4Addr};
+    use pnet::old_packet::ip::{IpNextHeaderProtocol,IpNextHeaderProtocols};
+
+    #[test]
+    fn calculate_checksum() {
+        let size = MutIcmpRequestPacket::allocation_size();
+        let mut vec: Vec<u8> = repeat(0u8).take(size).collect();
+        let mut packet = MutIcmpRequestPacket::new(vec.as_mut_slice());
+        let src_addr: IpAddr = FromStr::from_str("192.168.0.3").unwrap();
+        let dst_addr: IpAddr = FromStr::from_str("96.127.180.194").unwrap();
+
+        packet.set_version(4);
+        packet.set_header_length(5);
+        packet.set_dscp(0);
+        packet.set_total_length(40);
+        packet.set_identification(257);
+        // setting flags seems to result in malformed ICMP packets with a
+        // fragment offset.
+        packet.set_flags(0);
+        packet.set_fragment_offset(0);
+        packet.set_ttl(64);
+        packet.set_next_level_protocol(IpNextHeaderProtocols::Icmp);
+        packet.set_destination(dst_addr);
+        packet.set_source(src_addr);
+        packet.checksum();
+
+        packet.set_icmp_type();
+        packet.set_icmp_code();
+        packet.set_icmp_identifier(0x9b69);
+        packet.set_icmp_sequence(1);
+        packet.set_originate_timestamp(1);
+        packet.set_icmp_checksum();
+
+        let r = 0x5794;
+        assert_eq!(r, packet.get_icmp_checksum());
+    }
+
+    #[test]
+    fn calculate_checksum_again() {
+        let size = MutIcmpRequestPacket::allocation_size();
+        let mut vec: Vec<u8> = repeat(0u8).take(size).collect();
+        let mut packet = MutIcmpRequestPacket::new(vec.as_mut_slice());
+        let src_addr: IpAddr = FromStr::from_str("192.168.0.3").unwrap();
+        let dst_addr: IpAddr = FromStr::from_str("96.127.180.194").unwrap();
+
+        packet.set_version(4);
+        packet.set_header_length(5);
+        packet.set_dscp(0);
+        packet.set_total_length(40);
+        packet.set_identification(257);
+        // setting flags seems to result in malformed ICMP packets with a
+        // fragment offset.
+        packet.set_flags(0);
+        packet.set_fragment_offset(0);
+        packet.set_ttl(64);
+        packet.set_next_level_protocol(IpNextHeaderProtocols::Icmp);
+        packet.set_destination(dst_addr);
+        packet.set_source(src_addr);
+        packet.checksum();
+
+        packet.packet[20] = 0xd;
+        packet.packet[21] = 0;
+        packet.packet[22] = 0;
+        packet.packet[23] = 0;
+        packet.packet[24] = 0x9b;
+        packet.packet[25] = 0x69;
+        packet.packet[26] = 0;
+        packet.packet[27] = 01;
+        packet.packet[28] = 0;
+        packet.packet[29] = 0xf0;
+        packet.packet[30] = 0xb0;
+        packet.packet[31] = 0xe0;
+        packet.packet[32] = 0;
+        packet.packet[33] = 0;
+        packet.packet[34] = 0;
+        packet.packet[35] = 0;
+        packet.packet[36] = 0;
+        packet.packet[37] = 0;
+        packet.packet[38] = 0;
+        packet.packet[39] = 0;
+        packet.set_icmp_checksum();
+
+        let r = 0xa5c4;
+        assert_eq!(r, packet.get_icmp_checksum());
+    }
 }

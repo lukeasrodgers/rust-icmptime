@@ -64,7 +64,6 @@ fn ipv4_ip() -> IpAddr {
             Some(ref ips) => ips.as_slice().iter().any(|ip| match *ip { Ipv4Addr(_, _, _, _) => true, _  => false }),
             None => false
         }).unwrap()).clone();
-    println!("iface: {:?}", iface);
     let ipv4 = iface.ips.unwrap().as_slice().iter().find(|ip| match *ip { &Ipv4Addr(_, _, _, _) => true, _  => false }).unwrap().clone();
     ipv4
 }
